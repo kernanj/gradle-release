@@ -175,6 +175,10 @@ class PluginHelper {
         }
     }
 
+    void updateVersionProperty(String versionProperty, String releaseVersion) {
+        writeVersion(findPropertiesFile(), versionProperty, releaseVersion)
+    }
+
     /**
      * Reads user input from the console.
      *

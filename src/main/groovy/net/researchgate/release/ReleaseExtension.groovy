@@ -47,6 +47,8 @@ class ReleaseExtension {
 
     List versionProperties = []
 
+    Set<String> releaseDependencyProperties = []
+
     List buildTasks = ['build']
 
     Map<String, Closure<String>> versionPatterns = [

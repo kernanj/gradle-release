@@ -195,12 +195,19 @@ class ReleasePlugin extends PluginHelper implements Plugin<Project> {
 
     void unSnapshotVersion() {
         checkPropertiesFile()
-        def version = project.version.toString()
+        Set<String> releaseVersionProperties = extension.releaseDependencyProperties + 'version'
+        releaseVersionProperties.each {
+            def releaseVersion = project[it].toString()
 
-        if (version.contains('-SNAPSHOT')) {
-            attributes.usesSnapshot = true
-            version -= '-SNAPSHOT'
-            updateVersionProperty(version)
+            if (releaseVersion.contains('-SNAPSHOT')) {
+                attributes.usesSnapshot = true
+                releaseVersion -= '-SNAPSHOT'
+                if(it == 'version') {
+                    updateVersionProperty(releaseVersion)
+                } else {
+                    updateVersionProperty(it, releaseVersion)
+                }
+            }
         }
     }
 
@@ -221,29 +228,38 @@ class ReleasePlugin extends PluginHelper implements Plugin<Project> {
     }
 
     void updateVersion() {
-        def version = project.version.toString()
+        Set<String> releaseVersions = extension.releaseDependencyProperties + 'version'
         Map<String, Closure> patterns = extension.versionPatterns
 
-        for (entry in patterns) {
+        releaseVersions.each {
+            def releaseVersion = project[it].toString()
+            def versionIncreased = false
+            for (entry in patterns) {
 
-            String pattern = entry.key
-            Closure handler = entry.value
-            Matcher matcher = version =~ pattern
+                String pattern = entry.key
+                Closure handler = entry.value
+                Matcher matcher = releaseVersion =~ pattern
 
-            if (matcher.find()) {
-                String nextVersion = handler(matcher, project)
-                if (attributes.usesSnapshot) {
-                    nextVersion += '-SNAPSHOT'
+                if (matcher.find()) {
+                    String nextVersion = handler(matcher, project)
+                    if (attributes.usesSnapshot) {
+                        nextVersion += '-SNAPSHOT'
+                    }
+
+                    nextVersion = getNextVersion(nextVersion)
+                    if (releaseVersion == 'version') {
+                        updateVersionProperty(nextVersion)
+                    } else {
+                        updateVersionProperty(it, releaseVersion)
+                    }
+
+                    break
                 }
-
-                nextVersion = getNextVersion(nextVersion)
-                updateVersionProperty(nextVersion)
-
-                return
+            }
+            if(!versionIncreased) {
+                throw new GradleException("Failed to increase version [$releaseVersion] in property [$it] - unknown pattern")
             }
         }
-
-        throw new GradleException("Failed to increase version [$version] - unknown pattern")
     }
 
     String getNextVersion(String candidateVersion) {
